@@ -1,56 +1,63 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { SplashScreen, Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
+import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import { Provider as StoreProvider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+import { auth } from '../firebaseConfig';
+import { persistor, store } from '../store/store';
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
-
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
-};
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
-
-export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
-  });
-
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
-
-  return <RootLayoutNav />;
-}
-
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
-  );
+export default function Layout() {
+	useEffect(() => {
+		const unsubscribe = onAuthStateChanged(auth, (user) => {
+			if (user) {
+				// User is signed in, see docs for a list of available properties
+				// https://firebase.google.com/docs/reference/js/auth.user
+				const uid = user.uid;
+				router.replace('/home');
+				// ...
+			} else {
+				// User is signed out
+				// ...
+				router.push('/login');
+			}
+		});
+		return unsubscribe;
+	}, []);
+	return (
+		<>
+			{/*         
+		<StoreProvider store={store}>
+			<PersistGate loading={null} persistor={persistor}>
+			</PersistGate>
+		</StoreProvider> */}
+			<Stack
+				screenOptions={{
+					headerStyle: {
+						backgroundColor: '#f4511e',
+					},
+					headerTintColor: '#fff',
+					headerTitleStyle: {
+						fontWeight: 'bold',
+					},
+				}}
+			>
+				<Stack.Screen
+					name='(auth)/login'
+					options={{ title: 'Sign In' }}
+				/>
+				<Stack.Screen
+					name='(auth)/signup'
+					options={{ title: 'Sign up' }}
+				/>
+				<Stack.Screen
+					name='index'
+					options={{ title: 'Home', headerShown: false }}
+				/>
+				<Stack.Screen
+					name='(drawer)'
+					options={{ headerShown: false }}
+				/>
+			</Stack>
+		</>
+	);
 }
